@@ -40,6 +40,17 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 )
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
+@app.route('/')
+def home():
+    return jsonify({
+        'message': 'Welcome to E-commerce API',
+        'endpoints': {
+            'documentation': '/api/docs',
+            'products': '/products',
+            'orders': '/orders'
+        }
+    })
+
 # Routes
 @app.route('/products', methods=['GET'])
 def get_products():
@@ -89,6 +100,9 @@ def create_order():
         'quantity': order.quantity,
         'total_price': order.total_price
     }), 201
+
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)
