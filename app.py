@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_swagger_ui import get_swaggerui_blueprint
 from datetime import datetime
 import os
-from dotenv import load_load_dotenv
+from dotenv import load_dotenv
 
 load_dotenv()
 
