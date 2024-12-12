@@ -46,11 +46,7 @@ app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 def home():
     return jsonify({
         'message': 'Welcome to E-commerce API',
-        'endpoints': {
-            'documentation': '/api/docs',
-            'products': '/products',
-            'orders': '/orders'
-        }
+        'status': 'running'
     })
 
 # Routes
