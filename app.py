@@ -24,25 +24,33 @@ for key in os.environ:
         env_vars[key] = os.environ.get(key)
 logger.info(f"Environment variables: {env_vars}")
 
-# Wait for database URL (max 60 seconds)
-max_retries = 12
-retry_count = 0
-while retry_count < max_retries:
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        break
-    logger.info("Waiting for DATABASE_URL to be set...")
-    time.sleep(5)
-    retry_count += 1
-
 # Configure database
 try:
+    # Try getting the full DATABASE_URL first
+    database_url = os.environ.get('DATABASE_URL')
+    
+    # If not available, construct from individual components
     if not database_url:
-        raise ValueError("DATABASE_URL environment variable is not set after waiting")
+        logger.info("DATABASE_URL not found, constructing from components...")
+        db_user = os.environ.get('POSTGRES_USER')
+        db_password = os.environ.get('POSTGRES_PASSWORD')
+        db_host = os.environ.get('POSTGRES_HOST')
+        db_port = os.environ.get('POSTGRES_PORT')
+        db_name = os.environ.get('POSTGRES_DB')
+        
+        if all([db_user, db_password, db_host, db_port, db_name]):
+            database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            logger.info("Successfully constructed DATABASE_URL from components")
+        else:
+            missing = []
+            if not db_user: missing.append('POSTGRES_USER')
+            if not db_password: missing.append('POSTGRES_PASSWORD')
+            if not db_host: missing.append('POSTGRES_HOST')
+            if not db_port: missing.append('POSTGRES_PORT')
+            if not db_name: missing.append('POSTGRES_DB')
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
     
-    logger.info("Configuring database connection...")
-    
-    # Convert postgres:// to postgresql://
+    # Convert postgres:// to postgresql:// if necessary
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     

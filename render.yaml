@@ -2,42 +2,21 @@ services:
   - type: web
     name: ecommerce-api
     env: python
-    buildCommand: |
-      # Install system dependencies
-      apt-get update && apt-get install -y \
-        postgresql-client \
-        libpq-dev \
-        python3-dev \
-        gcc
-      pip install -r requirements.txt
-    startCommand: |
-      python3 -c "
-      import time
-      import os
-      while not os.environ.get('DATABASE_URL'):
-          print('Waiting for database URL...')
-          time.sleep(5)
-      "
-      gunicorn app:app --bind=0.0.0.0:$PORT --workers=1 --log-level debug --timeout 120
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind=0.0.0.0:$PORT --workers=1 --timeout=120
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
       - key: FLASK_ENV
         value: production
-      - key: SQLALCHEMY_TRACK_MODIFICATIONS
-        value: "false"
       - key: DATABASE_URL
         fromDatabase:
           name: ecommerce-db
           property: connectionString
-      - key: POSTGRES_HOST
+      - key: POSTGRES_DB
         fromDatabase:
           name: ecommerce-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: ecommerce-db
-          property: port
+          property: database
       - key: POSTGRES_USER
         fromDatabase:
           name: ecommerce-db
@@ -46,15 +25,17 @@ services:
         fromDatabase:
           name: ecommerce-db
           property: password
-      - key: POSTGRES_DATABASE
+      - key: POSTGRES_HOST
         fromDatabase:
           name: ecommerce-db
-          property: database
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: ecommerce-db
+          property: port
 
 databases:
   - name: ecommerce-db
     databaseName: ecommerce
     plan: free
-    postDeploy: |
-      psql $DATABASE_URL -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
-    ipAllowList: [] # allow all
+    ipAllowList: []
