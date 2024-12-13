@@ -4,6 +4,7 @@ import os
 import logging
 import sys
 import traceback
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -23,11 +24,21 @@ for key in os.environ:
         env_vars[key] = os.environ.get(key)
 logger.info(f"Environment variables: {env_vars}")
 
+# Wait for database URL (max 60 seconds)
+max_retries = 12
+retry_count = 0
+while retry_count < max_retries:
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        break
+    logger.info("Waiting for DATABASE_URL to be set...")
+    time.sleep(5)
+    retry_count += 1
+
 # Configure database
 try:
-    database_url = os.environ.get('DATABASE_URL')
     if not database_url:
-        raise ValueError("DATABASE_URL environment variable is not set")
+        raise ValueError("DATABASE_URL environment variable is not set after waiting")
     
     logger.info("Configuring database connection...")
     
@@ -43,6 +54,9 @@ try:
         SQLALCHEMY_ENGINE_OPTIONS={
             'pool_pre_ping': True,
             'pool_recycle': 300,
+            'connect_args': {
+                'connect_timeout': 10
+            }
         }
     )
     

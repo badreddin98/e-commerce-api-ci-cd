@@ -10,7 +10,15 @@ services:
         python3-dev \
         gcc
       pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind=0.0.0.0:$PORT --workers=1 --log-level debug --timeout 120
+    startCommand: |
+      python3 -c "
+      import time
+      import os
+      while not os.environ.get('DATABASE_URL'):
+          print('Waiting for database URL...')
+          time.sleep(5)
+      "
+      gunicorn app:app --bind=0.0.0.0:$PORT --workers=1 --log-level debug --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -47,4 +55,6 @@ databases:
   - name: ecommerce-db
     databaseName: ecommerce
     plan: free
+    postDeploy: |
+      psql $DATABASE_URL -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
     ipAllowList: [] # allow all
