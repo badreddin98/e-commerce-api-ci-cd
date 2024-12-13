@@ -13,26 +13,6 @@ services:
         fromDatabase:
           name: ecommerce-db
           property: connectionString
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: ecommerce-db
-          property: database
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: ecommerce-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: ecommerce-db
-          property: password
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: ecommerce-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: ecommerce-db
-          property: port
 
 databases:
   - name: ecommerce-db

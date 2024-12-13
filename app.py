@@ -26,29 +26,11 @@ logger.info(f"Environment variables: {env_vars}")
 
 # Configure database
 try:
-    # Try getting the full DATABASE_URL first
-    database_url = os.environ.get('DATABASE_URL')
+    # Try getting the database URL from different environment variables
+    database_url = os.environ.get('DATABASE_URL') or os.environ.get('PostgreSQL_database')
     
-    # If not available, construct from individual components
     if not database_url:
-        logger.info("DATABASE_URL not found, constructing from components...")
-        db_user = os.environ.get('POSTGRES_USER')
-        db_password = os.environ.get('POSTGRES_PASSWORD')
-        db_host = os.environ.get('POSTGRES_HOST')
-        db_port = os.environ.get('POSTGRES_PORT')
-        db_name = os.environ.get('POSTGRES_DB')
-        
-        if all([db_user, db_password, db_host, db_port, db_name]):
-            database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-            logger.info("Successfully constructed DATABASE_URL from components")
-        else:
-            missing = []
-            if not db_user: missing.append('POSTGRES_USER')
-            if not db_password: missing.append('POSTGRES_PASSWORD')
-            if not db_host: missing.append('POSTGRES_HOST')
-            if not db_port: missing.append('POSTGRES_PORT')
-            if not db_name: missing.append('POSTGRES_DB')
-            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+        raise ValueError("No database URL found in environment variables")
     
     # Convert postgres:// to postgresql:// if necessary
     if database_url.startswith('postgres://'):
