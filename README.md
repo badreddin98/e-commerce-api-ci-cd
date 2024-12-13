@@ -1,53 +1,128 @@
-# E-commerce API with CI/CD
+# E-commerce API
 
-This is an E-commerce API built with Flask and PostgreSQL, featuring a complete CI/CD pipeline using GitHub Actions and deployment to Render.
+A RESTful API for managing e-commerce products, built with Flask and PostgreSQL.
 
 ## Features
 
-- RESTful API endpoints for products and orders
+- CRUD operations for products
 - PostgreSQL database integration
-- Swagger documentation
-- Automated testing with pytest
-- CI/CD pipeline with GitHub Actions
-- Deployment to Render
+- Automated CI/CD pipeline with GitHub Actions
+- Deployment on Render
+- Input validation and error handling
+- Detailed logging
 
-## Setup
+## API Endpoints
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Set up environment variables in `.env`:
-   ```
-   DATABASE_URL=your_postgres_url
-   FLASK_APP=app.py
-   FLASK_ENV=development
-   ```
-4. Run the application:
-   ```bash
-   flask run
-   ```
+- `GET /`: Health check and database connection test
+- `GET /api/products`: List all products
+- `POST /api/products`: Create a new product
+- `GET /api/products/<id>`: Get a specific product
+- `PUT /api/products/<id>`: Update a product
+- `DELETE /api/products/<id>`: Delete a product
 
-## API Documentation
+## Product Schema
 
-Access the Swagger documentation at `/api/docs` when running the application locally.
-
-## Testing
-
-Run tests using pytest:
-```bash
-pytest
+```json
+{
+  "name": "string (required)",
+  "description": "string (optional)",
+  "price": "float (required, > 0)",
+  "stock": "integer (optional, >= 0)"
+}
 ```
 
-## CI/CD Pipeline
+## Setup and Installation
 
-The project uses GitHub Actions for CI/CD:
-- Automated testing on push to main branch
-- Automatic deployment to Render on successful tests
-- PostgreSQL database hosted on Render
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/e-commerce-api.git
+cd e-commerce-api
+```
 
-## Database Schema
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-- Products Table: id, name, price, description, created_at
-- Orders Table: id, product_id, quantity, total_price, created_at
+3. Set environment variables:
+```bash
+export DATABASE_URL=your_postgresql_url
+export FLASK_ENV=production
+```
+
+4. Run the application:
+```bash
+python app.py
+```
+
+## Example API Usage
+
+1. Create a product:
+```bash
+curl -X POST https://your-api-url/api/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Product",
+    "description": "A test product",
+    "price": 29.99,
+    "stock": 100
+  }'
+```
+
+2. Get all products:
+```bash
+curl https://your-api-url/api/products
+```
+
+3. Get a specific product:
+```bash
+curl https://your-api-url/api/products/1
+```
+
+4. Update a product:
+```bash
+curl -X PUT https://your-api-url/api/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 39.99,
+    "stock": 50
+  }'
+```
+
+5. Delete a product:
+```bash
+curl -X DELETE https://your-api-url/api/products/1
+```
+
+## Error Handling
+
+The API returns appropriate HTTP status codes and error messages:
+
+- 200: Success
+- 201: Created
+- 400: Bad Request (validation error)
+- 404: Not Found
+- 500: Internal Server Error
+
+## Deployment
+
+The API is automatically deployed to Render when changes are pushed to the main branch. The deployment process includes:
+
+1. Running tests
+2. Building the application
+3. Deploying to Render
+4. Setting up the PostgreSQL database
+
+## Environment Variables
+
+Required environment variables:
+- `DATABASE_URL`: PostgreSQL database URL
+- `FLASK_ENV`: Application environment (production/development)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request

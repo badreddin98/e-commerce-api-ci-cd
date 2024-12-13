@@ -1,3 +1,16 @@
+"""
+E-commerce API with Flask and PostgreSQL
+Provides CRUD operations for managing products in an e-commerce system.
+
+Endpoints:
+- GET /: Health check and database connection test
+- GET /api/products: List all products
+- POST /api/products: Create a new product
+- GET /api/products/<id>: Get a specific product
+- PUT /api/products/<id>: Update a product
+- DELETE /api/products/<id>: Delete a product
+"""
+
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -15,14 +28,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
-# Log environment variables
-logger.info("Environment variables:")
-env_vars = {}
-for key in os.environ:
-    if not any(sensitive in key.lower() for sensitive in ['password', 'secret', 'key']):
-        env_vars[key] = os.environ.get(key)
-logger.info(f"Environment variables: {env_vars}")
 
 # Configure database
 try:
@@ -44,16 +49,12 @@ try:
         SQLALCHEMY_ENGINE_OPTIONS={
             'pool_pre_ping': True,
             'pool_recycle': 300,
-            'connect_args': {
-                'connect_timeout': 10
-            }
         }
     )
     
-    logger.info("Initializing SQLAlchemy...")
     db = SQLAlchemy(app)
     logger.info("SQLAlchemy initialized successfully")
-    
+
 except Exception as e:
     logger.error(f"Error during database configuration: {str(e)}")
     logger.error(traceback.format_exc())
@@ -61,6 +62,7 @@ except Exception as e:
 
 # Models
 class Product(db.Model):
+    """Product model for storing product-related details"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
@@ -70,6 +72,7 @@ class Product(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
+        """Convert product object to dictionary"""
         return {
             'id': self.id,
             'name': self.name,
@@ -87,9 +90,8 @@ with app.app_context():
 
 @app.route('/')
 def home():
+    """Health check endpoint that tests database connection"""
     try:
-        logger.info("Testing database connection...")
-        # Try to establish a connection
         with app.app_context():
             with db.engine.connect() as connection:
                 result = connection.execute('SELECT 1').scalar()
@@ -107,13 +109,13 @@ def home():
         logger.error(traceback.format_exc())
         return jsonify({
             'error': 'Internal Server Error',
-            'message': error_msg,
-            'traceback': traceback.format_exc()
+            'message': error_msg
         }), 500
 
 # Product endpoints
 @app.route('/api/products', methods=['GET'])
 def get_products():
+    """Get all products"""
     try:
         products = Product.query.all()
         return jsonify([product.to_dict() for product in products])
@@ -123,8 +125,24 @@ def get_products():
 
 @app.route('/api/products', methods=['POST'])
 def create_product():
+    """Create a new product"""
     try:
         data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'price']
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing required field: {field}")
+        
+        # Validate price is positive
+        if float(data['price']) <= 0:
+            raise ValueError("Price must be greater than 0")
+        
+        # Validate stock is non-negative
+        if 'stock' in data and int(data.get('stock', 0)) < 0:
+            raise ValueError("Stock cannot be negative")
+        
         product = Product(
             name=data['name'],
             description=data.get('description'),
@@ -134,13 +152,18 @@ def create_product():
         db.session.add(product)
         db.session.commit()
         return jsonify(product.to_dict()), 201
+    except ValueError as e:
+        db.session.rollback()
+        logger.error(f"Validation error: {str(e)}")
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creating product: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/products/<int:id>', methods=['GET'])
 def get_product(id):
+    """Get a specific product by ID"""
     try:
         product = Product.query.get_or_404(id)
         return jsonify(product.to_dict())
@@ -150,24 +173,42 @@ def get_product(id):
 
 @app.route('/api/products/<int:id>', methods=['PUT'])
 def update_product(id):
+    """Update a specific product by ID"""
     try:
         product = Product.query.get_or_404(id)
         data = request.get_json()
         
-        product.name = data.get('name', product.name)
-        product.description = data.get('description', product.description)
-        product.price = float(data.get('price', product.price))
-        product.stock = int(data.get('stock', product.stock))
+        # Validate price if provided
+        if 'price' in data and float(data['price']) <= 0:
+            raise ValueError("Price must be greater than 0")
+        
+        # Validate stock if provided
+        if 'stock' in data and int(data['stock']) < 0:
+            raise ValueError("Stock cannot be negative")
+        
+        if 'name' in data:
+            product.name = data['name']
+        if 'description' in data:
+            product.description = data['description']
+        if 'price' in data:
+            product.price = float(data['price'])
+        if 'stock' in data:
+            product.stock = int(data['stock'])
         
         db.session.commit()
         return jsonify(product.to_dict())
+    except ValueError as e:
+        db.session.rollback()
+        logger.error(f"Validation error: {str(e)}")
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating product {id}: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/products/<int:id>', methods=['DELETE'])
 def delete_product(id):
+    """Delete a specific product by ID"""
     try:
         product = Product.query.get_or_404(id)
         db.session.delete(product)
@@ -176,17 +217,23 @@ def delete_product(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error deleting product {id}: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 errors"""
+    return jsonify({'error': 'Resource not found'}), 404
 
 @app.errorhandler(500)
-def handle_500(error):
+def internal_error(error):
+    """Handle 500 errors"""
+    db.session.rollback()
     error_msg = f"Internal Server Error: {str(error)}"
     logger.error(error_msg)
     logger.error(traceback.format_exc())
     return jsonify({
         'error': 'Internal Server Error',
-        'message': error_msg,
-        'traceback': traceback.format_exc()
+        'message': error_msg
     }), 500
 
 if __name__ == '__main__':
