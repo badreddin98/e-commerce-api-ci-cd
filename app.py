@@ -17,27 +17,34 @@ app = Flask(__name__)
 
 # Log environment variables
 logger.info("Environment variables:")
+env_vars = {}
 for key in os.environ:
     if not any(sensitive in key.lower() for sensitive in ['password', 'secret', 'key']):
-        logger.info(f"{key}: {os.environ.get(key)}")
+        env_vars[key] = os.environ.get(key)
+logger.info(f"Environment variables: {env_vars}")
 
 # Configure database
 try:
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.environ.get('DATABASE_URL')
     if not database_url:
-        logger.error("DATABASE_URL environment variable is not set!")
-        database_url = 'postgresql://postgres:postgres@localhost:5432/ecommerce'
-        logger.info(f"Using default database URL: {database_url}")
-    else:
-        logger.info(f"Found DATABASE_URL: {database_url}")
+        raise ValueError("DATABASE_URL environment variable is not set")
     
+    logger.info("Configuring database connection...")
+    
+    # Convert postgres:// to postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        logger.info(f"Modified DATABASE_URL: {database_url}")
-
-    # Basic SQLAlchemy configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    logger.info(f"Using database URL schema: {database_url.split('@')[0].split(':')[0]}")
+    
+    app.config.update(
+        SQLALCHEMY_DATABASE_URI=database_url,
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SQLALCHEMY_ENGINE_OPTIONS={
+            'pool_pre_ping': True,
+            'pool_recycle': 300,
+        }
+    )
     
     logger.info("Initializing SQLAlchemy...")
     db = SQLAlchemy(app)
@@ -51,11 +58,12 @@ except Exception as e:
 @app.route('/')
 def home():
     try:
-        # Test database connection with simple query
         logger.info("Testing database connection...")
-        with db.engine.connect() as conn:
-            result = conn.execute('SELECT 1').scalar()
-            logger.info(f"Database connection test result: {result}")
+        # Try to establish a connection
+        with app.app_context():
+            with db.engine.connect() as connection:
+                result = connection.execute('SELECT 1').scalar()
+                logger.info(f"Database connection test successful. Result: {result}")
         
         return jsonify({
             'message': 'Welcome to E-commerce API',
@@ -64,7 +72,7 @@ def home():
             'database_test': result
         })
     except Exception as e:
-        error_msg = f"Error in home route: {str(e)}"
+        error_msg = f"Database connection error: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         return jsonify({
