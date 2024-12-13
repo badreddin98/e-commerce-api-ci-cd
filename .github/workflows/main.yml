@@ -9,17 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
+    
     steps:
     - uses: actions/checkout@v2
     
@@ -27,22 +17,22 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.9'
-        
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
+    
     - name: Run tests
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
       run: |
         pytest
+      env:
+        FLASK_ENV: testing
+        DATABASE_URL: sqlite:///:memory:
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v2
@@ -51,6 +41,5 @@ jobs:
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: |
-        curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-        -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-        -H "Content-Type: application/json"
+        curl -X POST https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys \
+          -H "Authorization: Bearer $RENDER_API_KEY"
