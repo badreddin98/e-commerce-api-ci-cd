@@ -24,14 +24,25 @@ for key in os.environ:
 # Configure database
 try:
     database_url = os.getenv('DATABASE_URL')
-    logger.info(f"Initial DATABASE_URL: {database_url}")
+    if not database_url:
+        logger.error("DATABASE_URL environment variable is not set!")
+        database_url = 'postgresql://postgres:postgres@localhost:5432/ecommerce'
+        logger.info(f"Using default database URL: {database_url}")
+    else:
+        logger.info(f"Found DATABASE_URL: {database_url}")
     
-    if database_url and database_url.startswith('postgres://'):
+    if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
         logger.info(f"Modified DATABASE_URL: {database_url}")
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config.update(
+        SQLALCHEMY_DATABASE_URI=database_url,
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SQLALCHEMY_ENGINE_OPTIONS={
+            'pool_pre_ping': True,
+            'pool_recycle': 300,
+        }
+    )
     
     logger.info("Initializing SQLAlchemy...")
     db = SQLAlchemy(app)
@@ -47,14 +58,14 @@ def home():
     try:
         # Test database connection
         logger.info("Testing database connection...")
-        db.session.execute('SELECT 1')
-        db.session.commit()
-        logger.info("Database connection test successful")
+        result = db.session.execute('SELECT 1').scalar()
+        logger.info(f"Database connection test result: {result}")
         
         return jsonify({
             'message': 'Welcome to E-commerce API',
             'status': 'running',
-            'database_status': 'connected'
+            'database_status': 'connected',
+            'database_test': result
         })
     except Exception as e:
         error_msg = f"Error in home route: {str(e)}"
