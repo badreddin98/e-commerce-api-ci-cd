@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Log all environment variables (excluding sensitive data)
+# Log environment variables
 logger.info("Environment variables:")
 for key in os.environ:
     if not any(sensitive in key.lower() for sensitive in ['password', 'secret', 'key']):
@@ -34,15 +34,10 @@ try:
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
         logger.info(f"Modified DATABASE_URL: {database_url}")
-    
-    app.config.update(
-        SQLALCHEMY_DATABASE_URI=database_url,
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        SQLALCHEMY_ENGINE_OPTIONS={
-            'pool_pre_ping': True,
-            'pool_recycle': 300,
-        }
-    )
+
+    # Basic SQLAlchemy configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     logger.info("Initializing SQLAlchemy...")
     db = SQLAlchemy(app)
@@ -56,10 +51,11 @@ except Exception as e:
 @app.route('/')
 def home():
     try:
-        # Test database connection
+        # Test database connection with simple query
         logger.info("Testing database connection...")
-        result = db.session.execute('SELECT 1').scalar()
-        logger.info(f"Database connection test result: {result}")
+        with db.engine.connect() as conn:
+            result = conn.execute('SELECT 1').scalar()
+            logger.info(f"Database connection test result: {result}")
         
         return jsonify({
             'message': 'Welcome to E-commerce API',

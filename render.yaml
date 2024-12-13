@@ -2,7 +2,14 @@ services:
   - type: web
     name: ecommerce-api
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      # Install system dependencies
+      apt-get update && apt-get install -y \
+        postgresql-client \
+        libpq-dev \
+        python3-dev \
+        gcc
+      pip install -r requirements.txt
     startCommand: gunicorn app:app --bind=0.0.0.0:$PORT --workers=1 --log-level debug --timeout 120
     envVars:
       - key: PYTHON_VERSION
